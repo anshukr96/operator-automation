@@ -1,11 +1,14 @@
 // =============================================================
 // OPERATOR INTELLIGENCE DIGEST
-// Weekly Monday 8am IST → Telegram
+// Weekly Monday 8am IST → Email + local digest folder
 // Twitter primary, RSS fallback
 // =============================================================
 
 const https = require("https");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
+const nodemailer = require("nodemailer");
 
 // ─── OPERATORS ────────────────────────────────────────────────
 // 6 curated operators, rotating weekly focus
@@ -301,61 +304,44 @@ Rules:
   return data.content?.[0]?.text || "Claude returned empty response";
 }
 
-// ─── TELEGRAM DELIVERY ────────────────────────────────────────
+// ─── EMAIL DELIVERY + LOCAL SAVE ──────────────────────────────
 
-async function sendTelegram(text) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) throw new Error("Telegram credentials not set");
+function saveDigestToFile(text) {
+  const outputDir = process.env.DIGEST_OUTPUT_DIR || path.join(__dirname, "digests");
+  fs.mkdirSync(outputDir, { recursive: true });
+  const fileName = `digest-${new Date().toISOString().slice(0, 10)}.md`;
+  const filePath = path.join(outputDir, fileName);
+  fs.writeFileSync(filePath, text, "utf8");
+  return filePath;
+}
 
-  // Telegram max 4096 chars per message — chunk if needed
-  const chunks = [];
-  const lines = text.split("\n");
-  let current = "";
-  for (const line of lines) {
-    if ((current + "\n" + line).length > 3800) {
-      chunks.push(current);
-      current = line;
-    } else {
-      current += (current ? "\n" : "") + line;
-    }
+async function sendEmail(text, subject) {
+  const host = process.env.EMAIL_SMTP_HOST;
+  const port = Number(process.env.EMAIL_SMTP_PORT || 587);
+  const user = process.env.EMAIL_SMTP_USER;
+  const pass = process.env.EMAIL_SMTP_PASS;
+  const from = process.env.EMAIL_FROM;
+  const to = process.env.EMAIL_TO;
+
+  if (!host || !port || !user || !pass || !from || !to) {
+    throw new Error(
+      "Email credentials not set. Required: EMAIL_SMTP_HOST, EMAIL_SMTP_PORT, EMAIL_SMTP_USER, EMAIL_SMTP_PASS, EMAIL_FROM, EMAIL_TO"
+    );
   }
-  if (current) chunks.push(current);
 
-  for (const chunk of chunks) {
-    const body = JSON.stringify({
-      chat_id: chatId,
-      text: chunk,
-      parse_mode: "Markdown",
-    });
-    await new Promise((resolve, reject) => {
-      const req = https.request(
-        {
-          hostname: "api.telegram.org",
-          path: `/bot${token}/sendMessage`,
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "content-length": Buffer.byteLength(body),
-          },
-        },
-        (res) => {
-          let d = "";
-          res.on("data", (c) => (d += c));
-          res.on("end", () => {
-            const parsed = JSON.parse(d);
-            if (!parsed.ok) reject(new Error("Telegram error: " + d));
-            else resolve();
-          });
-        }
-      );
-      req.on("error", reject);
-      req.write(body);
-      req.end();
-    });
-    // Small delay between chunks
-    if (chunks.length > 1) await new Promise((r) => setTimeout(r, 500));
-  }
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+  });
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────
@@ -376,21 +362,20 @@ async function main() {
   console.log("🤖 Synthesizing with Claude...");
   const digest = await synthesizeWithClaude(operatorData);
 
-  const header = `*⚡ OPERATOR INTELLIGENCE — Week of ${new Date().toDateString()}*\n\n`;
-  const footer = `\n\n_Track → Think → Build. Reply to this message with your answer to the build question._`;
+  const header = `OPERATOR INTELLIGENCE — Week of ${new Date().toDateString()}\n\n`;
+  const footer = `\n\nTrack → Think → Build.`;
   const fullMessage = header + digest + footer;
 
-  console.log("📨 Sending to Telegram...");
-  await sendTelegram(fullMessage);
+  const savedPath = saveDigestToFile(fullMessage);
+  console.log(`💾 Saved digest to ${savedPath}`);
+
+  console.log("📨 Sending digest by email...");
+  await sendEmail(fullMessage, `Operator Digest — Week of ${new Date().toDateString()}`);
 
   console.log("✅ Done!");
 }
 
-main().catch(async (err) => {
+main().catch((err) => {
   console.error("❌ Fatal error:", err.message);
-  // Try to send error alert to Telegram
-  try {
-    await sendTelegram(`⚠️ *Operator Digest Failed*\n\`${err.message}\``);
-  } catch {}
   process.exit(1);
 });

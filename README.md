@@ -1,6 +1,6 @@
 # Operator Intelligence Digest
 
-Delivers a weekly Monday morning Telegram message with the single most instructive build from 6 top AI-native operators. Reverse-engineers their problem-spotting, decision framework, and tools.
+Delivers a weekly Monday morning email with the single most instructive build from 6 top AI-native operators. Reverse-engineers their problem-spotting, decision framework, and tools, and saves the digest locally in `digests/`.
 
 ## What it does
 
@@ -41,31 +41,33 @@ Create a new GitHub repo (can be private). Add these two files:
 2. Create API key
 3. Add a few dollars of credit
 
-**Telegram bot (free):**
-1. Open Telegram → search `@BotFather`
-2. Send `/newbot` → follow prompts → save the bot token
-3. Send any message to your new bot
-4. Visit: `https://api.telegram.org/bot<YOUR_TOKEN>/getUpdates`
-5. Find `"chat":{"id":XXXXXXX}` — that number is your Chat ID
+**Email delivery:**
+1. Choose an SMTP provider or use your mail server
+2. Collect SMTP host, port, user, and password
+3. Set a sender email and recipient email for delivery
 
 ### Step 3 — Add GitHub Secrets
 
 In your repo: **Settings → Secrets and variables → Actions → New repository secret**
 
-Add all four:
+Add these secrets:
 
 | Secret name | Value |
 |---|---|
 | `TWITTERAPI_IO_KEY` | Your twitterapi.io key |
 | `ANTHROPIC_API_KEY` | Your Anthropic API key |
-| `TELEGRAM_BOT_TOKEN` | `123456789:ABCdef...` |
-| `TELEGRAM_CHAT_ID` | Your numeric chat ID |
+| `EMAIL_SMTP_HOST` | SMTP host, e.g. `smtp.sendgrid.net` |
+| `EMAIL_SMTP_PORT` | SMTP port, usually `587` or `465` |
+| `EMAIL_SMTP_USER` | SMTP username |
+| `EMAIL_SMTP_PASS` | SMTP password |
+| `EMAIL_FROM` | Sender email address, e.g. `digest@yourdomain.com` |
+| `EMAIL_TO` | Recipient email address |
 
 ### Step 4 — Test it
 
 Go to **Actions tab → Weekly Operator Digest → Run workflow** (manual trigger).
 
-Watch the logs. You should receive a Telegram message within ~30 seconds.
+Watch the logs. The digest will be emailed and saved to the `digests/` folder within the repository workspace.
 
 ### Step 5 — Done
 
@@ -103,6 +105,6 @@ Edit the `OPERATORS` array in `digest.js`. Each entry:
 
 ## How to use the digest
 
-The digest ends with a **build question**. Answer it — even 2 sentences — in Telegram saved messages or a notes app. This is the forcing function that separates consumption from operator skill-building.
+The digest ends with a **build question**. Answer it — even 2 sentences — in email drafts, saved notes, or a notes app. This is the forcing function that separates consumption from operator skill-building.
 
 After 4 weeks of answering the build question, pick one answer and spend a weekend building a micro version of the insight you captured.

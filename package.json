@@ -1,0 +1,13 @@
+{
+  "name": "operator-automation",
+  "version": "1.0.0",
+  "description": "Weekly operator intelligence digest",
+  "main": "digest.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node digest.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.9.4"
+  }
+}

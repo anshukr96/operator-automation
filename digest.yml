@@ -1,0 +1,28 @@
+name: Weekly Operator Digest
+
+on:
+  schedule:
+    # 2:30 AM UTC = 8:00 AM IST every Monday
+    - cron: '30 2 * * 1'
+  workflow_dispatch: # allows manual run from GitHub UI anytime
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Operator Digest
+        env:
+          TWITTERAPI_IO_KEY: ${{ secrets.TWITTERAPI_IO_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: node digest.js

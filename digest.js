@@ -381,6 +381,8 @@ async function sendEmail(text, subject) {
     subject,
     text,
   });
+
+  transporter.close();
 }
 
 // ─── MAIN ─────────────────────────────────────────────────────

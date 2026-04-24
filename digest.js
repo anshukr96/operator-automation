@@ -295,6 +295,8 @@ Format your response EXACTLY like this:
 
 Rules:
 - Pick only ONE operator/project (the most instructive)
+- Include the exact link for the chosen build/insight in the digest
+- Briefly state why the other operators were not selected this week
 - Prefer content that shows decision-making process over finished products
 - If someone shipped something with a specific AI tool or workflow, name it exactly
 - Keep total length under 400 words

@@ -82,16 +82,45 @@ function fetchJson(url, options = {}) {
 
 function fetchText(url) {
   return new Promise((resolve, reject) => {
-    const lib = url.startsWith("https") ? https : http;
+    const originalUrl = url;
+    const originalUrlObj = new URL(url);
     let redirectCount = 0;
 
+    function resolveLocation(location, baseUrl) {
+      if (!location) return baseUrl;
+      const trimmed = location.trim();
+      try {
+        return new URL(trimmed, baseUrl).toString();
+      } catch {
+        try {
+          return new URL(trimmed, originalUrl).toString();
+        } catch {
+          if (trimmed.startsWith("//")) return `${originalUrlObj.protocol}${trimmed}`;
+          if (trimmed.startsWith("/")) return `${originalUrlObj.origin}${trimmed}`;
+          if (!trimmed.includes("://")) return `${originalUrlObj.protocol}//${trimmed}`;
+          return trimmed;
+        }
+      }
+    }
+
     function doFetch(currentUrl) {
+      try {
+        currentUrl = new URL(currentUrl, originalUrl).toString();
+      } catch {
+        // If URL resolution fails, try to use the last valid base URL as a fallback
+        try {
+          currentUrl = new URL(currentUrl, url).toString();
+        } catch {
+          // leave currentUrl unchanged and let http.get reject if invalid
+        }
+      }
       const lib2 = currentUrl.startsWith("https") ? https : http;
       lib2
         .get(currentUrl, { headers: { "User-Agent": "OperatorDigest/1.0" } }, (res) => {
           if ([301, 302, 307, 308].includes(res.statusCode) && res.headers.location && redirectCount < 5) {
             redirectCount++;
-            doFetch(res.headers.location);
+            const nextUrl = resolveLocation(res.headers.location, currentUrl);
+            doFetch(nextUrl);
             return;
           }
           let data = "";
@@ -151,7 +180,17 @@ async function fetchTwitter(handle) {
       path: `/twitter/user/tweets?username=${handle}&limit=20`,
       method: "GET",
     });
-    const tweets = data.tweets || data.data || [];
+    const tweets = Array.isArray(data.tweets)
+      ? data.tweets
+      : Array.isArray(data.data)
+      ? data.data
+      : Array.isArray(data.data?.tweets)
+      ? data.data.tweets
+      : [];
+    if (!Array.isArray(tweets)) {
+      console.error(`Twitter fetch unexpected response for ${handle}:`, JSON.stringify(data).slice(0, 200));
+      return [];
+    }
     return tweets
       .filter((t) => isLastWeek(t.created_at || t.createdAt))
       .map((t) => ({
